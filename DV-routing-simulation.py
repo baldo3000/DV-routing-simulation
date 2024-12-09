@@ -1,13 +1,13 @@
 class Router:
     def __init__(self, name: str):
         self.name = name
-        self.routing_table = {} # destination: (distance, next hop)
+        self.routing_table: dict[str, tuple[int, str]] = {} # destination: (distance, next hop)
         self.routing_table[self.name] = (0, self.name)
         
     def add_neighbour(self, neighbour: str, distance: int):
         self.routing_table[neighbour] = (distance, neighbour)
         
-    def update_table(self, neighbour: str, neighbour_table):
+    def update_table(self, neighbour: str, neighbour_table: dict[str, tuple[int, str]]):
         neighbour_distance = self.routing_table.get(neighbour, (999, None))[0]
         for destination, (distance, _) in neighbour_table.items():
             new_distance = neighbour_distance + distance
@@ -21,8 +21,8 @@ class Router:
                
 class Network:
     def __init__(self):
-        self.routers = {} # router: Router
-        self.edges = {} # (router1, router2): distance
+        self.routers: dict[str, Router] = {} # router: Router
+        self.edges: dict[tuple[str, str], int] = {} # (router1, router2): distance
         
     def add_router(self, name: str):
         self.routers[name] = Router(name)
