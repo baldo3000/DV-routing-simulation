@@ -28,12 +28,18 @@ class Router:
         Args:
             neighbour (str): name of the router that provides the DV
             neighbour_table (dict[str, tuple[int, str]]): DV of the router
+            
+        Returns:
+            bool: True if the table was updated, False otherwise
         """
+        updated = False
         neighbour_distance = self.routing_table.get(neighbour, (sys.maxsize, None))[0]
         for destination, (distance, _) in neighbour_table.items():
             new_distance = neighbour_distance + distance
             if destination not in self.routing_table or new_distance < self.routing_table[destination][0]:
                 self.routing_table[destination] = (new_distance, neighbour)
+                updated = True
+        return updated
                 
     def print_table(self):
         """Prints DV
@@ -80,6 +86,31 @@ class Network:
         self.edges[(router2, router1)] = distance
         self.routers[router2].add_neighbour(router1, distance)
         
+    def send_table(self, router: str):
+        """Sends router's DV to all neighbours.
+        
+        Before sending, the DV is modified using SPLIT HORIZON with POISONOUS REVERSE method.
+        
+        Furthermore, the TRIGGERED UPDATE mechanism is implemented: if a neighbour router has modified its table after receiving a DV it also sends its DV to its neighbours
+
+        Args:
+            router (str): router who sends its DV to neighbours
+        """
+        updated_neighbours = []
+        for (router1, router2) in self.edges:
+            if router1 == router:
+                # poison table
+                poisoned_table = self.routers[router1].routing_table.copy()
+                for destination, (_, next_hop) in poisoned_table.items():
+                    if next_hop == router2:
+                        poisoned_table[destination] = (sys.maxsize, next_hop)
+                # send poisoned table
+                if self.routers[router2].update_table(router1, poisoned_table):
+                    updated_neighbours.append(router2)
+        # triggered updates
+        for updated_neighbour in updated_neighbours:
+            self.send_table(updated_neighbour)
+                     
     def update_tables(self, steps=None):
         """Makes all routers in the network exchange their DVs to their neighbours
 
@@ -89,21 +120,9 @@ class Network:
         if steps is None:
             steps = len(self.routers)
         for _ in range(steps):
-            for (router1, router2) in self.edges:
-                # poison router 1 table
-                poisoned_router1_table = self.routers[router1].routing_table.copy()
-                for destination, (_, next_hop) in poisoned_router1_table.items():
-                    if next_hop == router2:
-                        poisoned_router1_table[destination] = (sys.maxsize, next_hop)
-                # poison router 2 table
-                poisoned_router2_table = self.routers[router2].routing_table.copy()
-                for destination, (_, next_hop) in poisoned_router2_table.items():
-                    if next_hop == router1:
-                        poisoned_router1_table[destination] = (sys.maxsize, next_hop)
-                # send poisoned tables
-                self.routers[router1].update_table(router2, poisoned_router2_table)
-                self.routers[router2].update_table(router1, poisoned_router1_table)
-        
+            for router in self.routers:
+                self.send_table(router)
+    
     def print_tables(self):
         """Prints DVs from all routers in the network
         """
