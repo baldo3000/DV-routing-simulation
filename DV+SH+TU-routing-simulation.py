@@ -1,4 +1,5 @@
 import sys
+
 class Router:
     """Simulated router with DV
     """
@@ -89,8 +90,19 @@ class Network:
             steps = len(self.routers)
         for _ in range(steps):
             for (router1, router2) in self.edges:
-                self.routers[router1].update_table(router2, self.routers[router2].routing_table)
-                self.routers[router2].update_table(router1, self.routers[router1].routing_table)
+                # poison router 1 table
+                poisoned_router1_table = self.routers[router1].routing_table.copy()
+                for destination, (_, next_hop) in poisoned_router1_table.items():
+                    if next_hop == router2:
+                        poisoned_router1_table[destination] = (sys.maxsize, next_hop)
+                # poison router 2 table
+                poisoned_router2_table = self.routers[router2].routing_table.copy()
+                for destination, (_, next_hop) in poisoned_router2_table.items():
+                    if next_hop == router1:
+                        poisoned_router1_table[destination] = (sys.maxsize, next_hop)
+                # send poisoned tables
+                self.routers[router1].update_table(router2, poisoned_router2_table)
+                self.routers[router2].update_table(router1, poisoned_router1_table)
         
     def print_tables(self):
         """Prints DVs from all routers in the network
@@ -98,8 +110,6 @@ class Network:
         for _, router in self.routers.items():
             router.print_table()
         
-        
- 
 if __name__ == "__main__":
     net = Network()
     
