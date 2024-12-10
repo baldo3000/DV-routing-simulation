@@ -141,6 +141,6 @@ if __name__ == "__main__":
     net.print_tables()
     print("\n")
     # edge cost change test
-    net.add_edge("C", "D", 1)
+    net.add_edge("C", "D", 1) # modifies an existing edge if it exists
     net.update_tables()
     net.print_tables()
