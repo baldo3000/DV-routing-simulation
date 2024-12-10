@@ -139,3 +139,9 @@ if __name__ == "__main__":
     
     net.update_tables()
     net.print_tables()
+    print("\n")
+    # edge cost change test
+    net.routers["C"].routing_table["D"] = (1, "D")
+    net.routers["D"].routing_table["C"] = (1, "C")
+    net.update_tables()
+    net.print_tables()
